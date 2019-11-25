@@ -7,7 +7,13 @@ Maintainer: Patrice Godard <patrice.godard@gmail.com>
 Description: This package provides a way to maintain a synchronized version
 of Zotero (http://zotero.org) bibliography.
 Depends:
-   httr
+   httr,
+   tibble,
+   dplyr,
+   magrittr,
+Imports:
+   glue
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
+Roxygen: list(markdown = TRUE)
