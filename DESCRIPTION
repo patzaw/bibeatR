@@ -1,0 +1,13 @@
+Package: zotapir
+Type: Package
+Title: Synchronized Zotero Bibliography in R
+Version: 0.1.0
+Author: Patrice Godard
+Maintainer: Patrice Godard <patrice.godard@gmail.com>
+Description: This package provides a way to maintain a synchronized version
+of Zotero (http://zotero.org) bibliography.
+Depends:
+   httr
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
