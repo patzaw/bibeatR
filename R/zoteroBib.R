@@ -1,9 +1,10 @@
+###############################################################################@
 #' Get Zotero bibiliography from cloud
 #'
 #' Internal function (not exported)
 #'
-#' @param un Zotero user identifier
-#' @param kn Zotero key
+#' @param userID Zotero user identifier
+#' @param key Zotero key
 #' @param latestVersion A numeric indicating the version after which
 #' modified records should be taken (Default: NA ==> take all records)
 #' @param excludedTypes the types of record to exclude (default: "attachment")
@@ -31,7 +32,8 @@
 #' - **url**: the record URL
 #'
 getZoteroBib <- function(
-   un, kn,
+   baseURL="https://api.zotero.org",
+   userID, key,
    latestVersion=NA,
    excludedTypes="attachment",
    by=100,
@@ -47,14 +49,14 @@ getZoteroBib <- function(
       }
       r <- GET(
          glue(
-            "https://api.zotero.org/users/{un}/items",
+            "{baseURL}/users/{userID}/items",
             "?limit={by}",
             "&start={i}",
             ifelse(is.na(latestVersion), "", "&since={latestVersion}"),
             paste(glue("&itemType=-{excludedTypes}"), collapse=""),
             "&format=json&include=bibtex"
          ),
-         add_headers("Zotero-API-Key"=kn)
+         add_headers("Zotero-API-Key"=key)
       )
       version <- unique(c(version, r$headers$`last-modified-version`))
       if(length(version)>1){
@@ -64,6 +66,9 @@ getZoteroBib <- function(
          bibTable <- c()
          version <- c()
       }else{
+         if(i==0 && verbose){
+            message(glue("{r$headers$'total-results'} records to get"))
+         }
          bibTable <- bind_rows(
             bibTable,
             do.call(
@@ -167,4 +172,55 @@ mergeZoteroBib <- function(x, y){
       )
    attr(toRet, "latestVersion") <- attr(n, "latestVersion")
    return(toRet)
+}
+
+###############################################################################@
+#' Update Zotero bibliography
+#'
+#' Update the local copy of Zotero bibliography
+#'
+#' @param incremental a logical indicating if the update should be incremental
+#' (Default: TRUE). If FALSE all the records are downloaded
+#' @param verbose a logical indicating if additional messages should be
+#' displayed.
+#'
+#' @importFrom glue glue
+#' @export
+#'
+updateZoteroBib <- function(incremental=TRUE, verbose=TRUE){
+   stopifnot(checkZoteroConn())
+   bib <- zotapirEnv$bib
+   if(incremental){
+      latestVersion <- attr(bib, "latestVersion")
+   }else{
+      latestVersion <- NULL
+   }
+   if(is.null(latestVersion)){
+      latestVersion <- NA
+      if(verbose){
+         message("Getting all the records")
+      }
+   }else{
+      if(verbose){
+         message(glue("Getting records from version {latestVersion}"))
+      }
+   }
+   toAdd <- getZoteroBib(
+      baseURL=zotapirEnv$baseURL,
+      userID=zotapirEnv$userID,
+      key=zotapirEnv$key,
+      latestVersion=latestVersion,
+      excludedTypes=zotapirEnv$excludedTypes,
+      by=100,
+      verbose=verbose
+   )
+   if(!incremental || is.null(bib)){
+      bib <- toAdd
+   }else{
+      if(!is.null(toAdd)){
+         bib <- mergeZoteroBib(bib, toAdd)
+      }
+   }
+   saveRDS(bib, file=zotapirEnv$bibFile)
+   assign("bib", bib, zotapirEnv)
 }
